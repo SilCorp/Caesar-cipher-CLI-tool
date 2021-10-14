@@ -54,6 +54,6 @@ export function cesarCipher(input = '', action, shift = 0) {
     return result
 }
 
-export function isLowerCase(char) {
+function isLowerCase(char) {
     return char === char.toLowerCase() && char !== char.toUpperCase()
 }

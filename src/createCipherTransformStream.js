@@ -2,13 +2,16 @@ import {Transform} from 'stream'
 import {cesarCipher} from "./cesarCipher.js";
 
 
-export class CesarCipherTransform extends Transform {
+export function createTransformStream(action, shift) {
+    return new CipherTransformStream({action, shift})
+}
+
+class CipherTransformStream extends Transform {
     constructor(options) {
         super(options);
-        const {action, shift} = options
 
-        this.action = action
-        this.shift = shift
+        this.action = options.action
+        this.shift = options.shift
     }
 
     _transform(chunk, encoding, callback) {

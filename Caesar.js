@@ -1,46 +1,35 @@
-import {program} from "commander/esm.mjs";
-import {Option} from "commander";
-import * as fs from "fs";
+import {parameters} from "./src/paramsValidation.js";
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import * as path from "path";
-import {pipeline} from "stream"
-import {CesarCipherTransform} from "./src/CesarCipherTransform.js";
+import * as stream from "stream"
+import {createTransformStream} from "./src/createCipherTransformStream.js";
+import {createReadStream} from "./src/createReadStream.js";
+import {createWriteStream} from "./src/createWriteStream.js";
+import {promisify} from "util";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+async function main() {
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
 
-program
-    .requiredOption('-s, --shift <shift>', 'a shift')
-    .addOption(new Option('-a, --action <action>', 'an action encode/decode').choices(['encode','decode']))
-    .option('-i, --input <input>', 'an input file')
-    .option('-o, --output <output>', 'an output file')
-    .parse()
+    const pipeline = promisify(stream.pipeline)
 
-const { shift, action, input, output } = program.opts()
+    const { input, action, shift, output} = parameters
+    const inputPath = input ? path.join(__dirname, input) : null
+    const outputPath = output ? path.join(__dirname, output) : null
 
-let readStream = input
-    ? fs.createReadStream(path.join(__dirname, input))
-    : process.stdin
+    await pipeline(
+        createReadStream(inputPath),
+        createTransformStream(action, shift),
+        createWriteStream(outputPath),
+    )
+}
 
-let writeStream = output
-    ? fs.createWriteStream(path.join(__dirname, output), {flags:'a'})
-    : process.stdout
-
-let transformStream = new CesarCipherTransform({
-    action: action,
-    shift: shift,
-})
-
-pipeline(
-    readStream,
-    transformStream,
-    writeStream,
-    (err) => {
-        if (err) {
-            console.log('Pipeline failed.', err)
-        } else {
-            console.log('Pipeline succeeded')
-        }
-    }
-)
+main()
+    .then( () => {
+        console.log('Pipeline succeeded')
+    })
+    .catch(err => {
+        process.stderr.write(`Error: ${err.message}`)
+        process.exit(1)
+    })
